@@ -37,6 +37,9 @@ vim.o.confirm = true
 vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
 vim.keymap.set("i", "jj", "<ESC>")
 vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
+vim.keymap.set('n', '<leader>pv', vim.cmd.Ex)
+vim.keymap.set({'n', 'v'}, '<leader>y', [["+y]])
+vim.keymap.set('n', '<leader>y', [["+Y]])
 vim.keymap.set('t', '<Esc><Esc>', '<C-\\><C-n>', { desc = 'Exit terminal mode' })
 
 vim.api.nvim_create_autocmd('TextYankPost', {
@@ -499,19 +502,6 @@ require('lazy').setup({
       --  - settings (table): Override the default settings passed when initializing the server.
       --        For example, to see the options for `lua_ls`, you could go to: https://luals.github.io/wiki/settings/
       local servers = {
-        -- clangd = {},
-        -- gopls = {},
-        -- pyright = {},
-        -- rust_analyzer = {},
-        -- ... etc. See `:help lspconfig-all` for a list of all the pre-configured LSPs
-        --
-        -- Some languages (like typescript) have entire language plugins that can be useful:
-        --    https://github.com/pmizio/typescript-tools.nvim
-        --
-        -- But for many setups, the LSP (`ts_ls`) will work just fine
-        -- ts_ls = {},
-        --
-
         lua_ls = {
           -- cmd = { ... },
           -- filetypes = { ... },
@@ -526,6 +516,18 @@ require('lazy').setup({
             },
           },
         },
+        gopls = {},
+        zls = {},
+        nil_ls = {settings = {
+          nix = {
+            flake = {
+              autoEvalInputs = true,
+            },
+            autoArchive = true,
+          },
+        },},
+        rust_analyzer = {},
+        clangd = {},
       }
 
       -- Ensure the servers and tools above are installed
@@ -543,12 +545,16 @@ require('lazy').setup({
       -- for you, so that they are available from within Neovim.
       local ensure_installed = vim.tbl_keys(servers or {})
       vim.list_extend(ensure_installed, {
-        'stylua', -- Used to format Lua code
-        'nil',
+        'stylua',
+        'alejandra',
+        'clang-format',
+        'prettier',
+        'rustywind',
       })
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
 
       require('mason-lspconfig').setup {
+        automatic_enable = true,
         ensure_installed = {}, -- explicitly set to an empty table (Kickstart populates installs via mason-tool-installer)
         automatic_installation = false,
         handlers = {
@@ -585,7 +591,7 @@ require('lazy').setup({
         -- Disable "format_on_save lsp_fallback" for languages that don't
         -- have a well standardized coding style. You can add additional
         -- languages here or re-enable it for the disabled ones.
-        local disable_filetypes = { c = true, cpp = true }
+        local disable_filetypes = { c = true, cpp = true, cc = true }
         if disable_filetypes[vim.bo[bufnr].filetype] then
           return nil
         else
@@ -597,7 +603,10 @@ require('lazy').setup({
       end,
       formatters_by_ft = {
         lua = { 'stylua' },
-        nix = { 'nil' },
+        nix = {'alejandra'},
+        rs = { 'rustywind' },
+        yaml = {'prettier'},
+        json = {'prettier'},
         -- Conform can also run multiple formatters sequentially
         -- python = { "isort", "black" },
         --
